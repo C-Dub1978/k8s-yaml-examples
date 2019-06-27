@@ -19,6 +19,26 @@ selector:
 The service will look for any pods that have the label
 app:webapp
 
+So next we'll create a service to point to our webapp pod!
+
+For the service yaml, the metadata -> name, is absolutely critical - it needs to be a unique name. So you as an architect need to create a system for naming unique services.
+
+If you make your service of type ClusterIP, you tell k8s that this service will only be accessible from within the cluster (good for internal microservices). Many microservices shouldn't be exposed to external traffic, so the type: ClusterIP would be good for those.
+If you need your service to be accessible to outside traffic, use type: NodePort
+
+The type NodePort exposes the port through the worker node. We can actually choose which NodePort we want to expose. we can add a key/value pair
+
+ports:
+  - name: http
+    port: 80 # which pod port
+    nodePort: 30080 # must be greater than 30000
+
+Once the service and pod are applied, use minikube ip
+
+it will give you the ip of the cluster, then since we have a NodePort 30080 on the service, we can use a browser to the cluster ip address:30080, and it will give us the app running in the pod!
+
+
+
 
 
 

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # name must be unique!
+  name: fleetman-webapp
+spec:
+  # This defines which pods will be pointed to by this service
+  # The service becomes a network endpoint for other services or outside traffic
+  selector:
+    # Find any pods with label app: webapp
+    app: webapp
+  ports:
+    # Accept traffic on this port
+    - name: http # friendly name for the traffic type
+      port: 80
+      nodePort: 30080
+  # The following is only supported by some cloud providers, it wont run
+  # locally so don't try it
+  # type: LoadBalancer
+  type: NodePort
