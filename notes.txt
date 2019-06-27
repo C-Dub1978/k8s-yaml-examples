@@ -1,0 +1,24 @@
+To get cluster ip:
+
+minikube ip
+
+Pods are not meant to be seen from outside of the cluster, so they are only accessible from inside the cluster by default.
+
+//////////////////////////////
+
+SERVICES:
+
+Since pods are ephemeral and come/go/live/die/restart, services are there to make sure they are pointed at any instance of a pod, no matter if its restarted or what.... With a service, we CAN connect to the k8s cluster and the service will find whatever pod to fill a request.
+
+Pod Labels:
+We can set up a series of key/value pairs (one or more pair). For example, we can give a pod a label whos key is 'app' and value is 'webapp'. You can give any labels you want, it's up to you. When we create a service, we give it a selector (key/value pair), such as app:webapp - and the service will look for any pods that have that key/value pair. So for a service with 
+
+selector:
+  app:webapp
+
+The service will look for any pods that have the label
+app:webapp
+
+
+
+
