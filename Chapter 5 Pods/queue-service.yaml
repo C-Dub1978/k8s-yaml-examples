@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # Unique name for queue service
+  name: fleetman-queue-svc
+spec:
+  # Point to pods with app:fleetman-queue
+  selector:
+    app: fleetman-queue
+  ports:
+    # Accept traffic on this port
+    - name: http
+      port: 8161 # Pod/container port
+      protocol: TCP
+      nodePort: 30010
+  # Create nodePort as we want browser access
+  type: NodePort

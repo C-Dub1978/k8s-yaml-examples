@@ -37,6 +37,87 @@ Once the service and pod are applied, use minikube ip
 
 it will give you the ip of the cluster, then since we have a NodePort 30080 on the service, we can use a browser to the cluster ip address:30080, and it will give us the app running in the pod!
 
+So let's say that our pod/container/application has been updated - the dev's have added a new function to it. You could simply go into the pod yaml file and change the container image. The problem with this, is that when you applied the file, it would have to kill the pod, pull the new container image, etc. which means downtime.....There are other, built in elegant methods built into k8s which we will get into later......... For now, we will use labels which will be a workaround.
+
+For this, we will add an additional label to the pod yaml,
+release:0
+
+Then we add that into the selection rules of the service, telling the service to target any pods with labels
+app: webapp AND
+release: 0
+
+We will then create a second pod with those labels, which will allow the old pod to still serve, while the new pod comes up. Change the service yaml and then apply the service.
+
+
+/////////////////////////////////////
+
+Deploying ActiveMQ as a pod/service:
+
+We will deploy a queue service. Let's pretend the system developer decides a queue is needed. My job, is to deploy the queue and ensure it is working.
+
+The image is richardchesterwood/k8s-fleetman-queue:release-1
+
+Port 8161 is the admin console with admin/admin
+
+Create a pod with the image (dont worry about port), then a service with nodePort 30010 and pod port 8161
+
+///////////////////////////////////
+
+ReplicaSets:
+
+Pods will die and restart, we know this. If the node dies were in trouble, but pods are expected to come and go. They are super basic. If a pod consumes too many resources like CPU/Memory, the node will execute it. When we create a pod yaml and apply it like we have been, WE are solely responsible for the lifecycle of the pod (k8s is not, because we have created it manually). If it dies or gets deleted, it's gone, and so is our app.
+
+A replicaset can save the day, and it's easy - it's just a little bit of config we give to configuration. All we do is tell k8s that we want x number of the specific pods running at ALL times - if one of the pods dies, k8s will immediately create a new pod to replace it. Think of a replicaset as a wrapper over a pod.
+
+To define a replicaset,check the k8s api documentation. We do not need to create a seperate pod and replicaset yaml file. You should write a 2 in 1. The spec.metadata inside a replicaset is the exact same as the top-level metadata you would put in your pod, the difference is just that now (for the pod) you use spec.template to define the metadata.labels, spec.template.spec , etc.
+
+/////////////////////////////////////
+
+Deployments:
+
+A deployment is a more sophisticated form of replicasets. With a deployment, we can get automatic rolling updates with 0 downtime. They also support rollbacks in case something goes wrong.
+
+A deployment will actually create it's own replicaset - the deployment's job is to create and manage a replicaset and all it's objects.
+
+From now on, we won't create replicasets, we will only create deployments.
+
+/////////////////////////////////
+
+kubectl rollout status (command):
+
+kubectl rollout status <object> <objectName>
+
+exp:
+
+kubectl rollout status deploy/some-deployment
+
+You can watch the rollout status while it's happening by issuing that command, it's in real-time. Very convenient.
+
+Undo exp:
+
+To undo a rollout while it's happening
+
+First check the history:
+
+kubectl rollout history <object> <objectName>
+exp:
+kubectl rollout history deploy/myDeployment
+
+Will give you id's of the previous rollouts that have happended. To roll back to previous:
+
+kubectl rollout undo <object> <objectName>
+exp:
+kubectl rollout undo deploy/myDeployment
+
+(k8s will by default remember only the last 10 rollouts)
+
+Remember - when you roll back or do things with the command line, pay attention because your yaml files will be out of sync with your current state, and you always want desired state to match current state, so update your yaml when needed. 
+
+Only use rollbacks in complete emergencies because you'll get desired vs. current state out of sync.
+
+
+
+
 
 
 

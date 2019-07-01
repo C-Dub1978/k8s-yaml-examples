@@ -12,7 +12,7 @@ spec:
   ports:
     # Accept traffic on this port
     - name: http # friendly name for the traffic type
-      port: 80
+      port: 80 # The port on the pod
       nodePort: 30080
   # The following is only supported by some cloud providers, it wont run
   # locally so don't try it
