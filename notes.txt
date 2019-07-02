@@ -103,7 +103,7 @@ kubectl rollout history <object> <objectName>
 exp:
 kubectl rollout history deploy/myDeployment
 
-Will give you id's of the previous rollouts that have happended. To roll back to previous:
+Will give you id's of the previous rollouts that have happened. To roll back to previous:
 
 kubectl rollout undo <object> <objectName>
 exp:
@@ -114,6 +114,10 @@ kubectl rollout undo deploy/myDeployment
 Remember - when you roll back or do things with the command line, pay attention because your yaml files will be out of sync with your current state, and you always want desired state to match current state, so update your yaml when needed. 
 
 Only use rollbacks in complete emergencies because you'll get desired vs. current state out of sync.
+
+/////////////////////////////////////////////
+
+
 
 
 

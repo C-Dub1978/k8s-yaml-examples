@@ -6,6 +6,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: webapp
+  namespace: ns-webapp
 spec:
   replicas: 3
   minReadySeconds: 30
