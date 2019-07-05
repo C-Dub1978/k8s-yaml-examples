@@ -121,6 +121,23 @@ Persistance:
 
 Now that we have deployed all of our microservices, there is a serious problem. All of the history of our vehicles is being stored in memory of the position tracker pod. The problem is that eventually, the pod will run out of memory and k8s will destroy it and restart it. To solve this problem, were going to need to store this data in an actual data store, like a database somewhere.
 
+Our next step is to create a new deployment/pod for a dedicated mongodb data store - it will be used ONLY to store data from the position tracker in a permanent store.
+
+Well need a new mongo deployment and service.
+
+Once we have created the new mongo deployment/pod and service, we still have a problem - it definitely stores the data from the position-tracker, but its only storing it inside that pods memory. When that pod/container dies, although the replicaset will bring it back up, the mongodb data is gone forever. We now need to persist the data in a persistent volume, so that the mongodb data survives a pod restart.
+
+In our case, we want to store the data somewhere on our local machine right now, since we are developing on localhost. When we end up migrating to aws, we will want to utilize an EBS (elastic block store - a hard drive in the cloud).
+
+To mount a volume, we need to tell our deployment that we want to mount a container folder (the mongodb data folder) outside on our localhost to some arbitrary folder.
+
+in the deployment.spec.template.spec.containers, add a 'volumeMounts' property -
+  with a -name: mongo-persistent-storage
+          mountPath: /data/db #default mongod data folder
+
+For the actual mount path on our localmachine, there are many complicated options. Refer to the k8s documentation and refer to our yaml file to see how we mount to a directory inside our VM for the mongo data store
+
+
 
 
 
