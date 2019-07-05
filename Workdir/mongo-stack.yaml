@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+spec:
+  selector:
+    matchLabels:
+      app: mongodb
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:3.6.5-jessie
+          volumeMounts:
+            - name: mongo-persistent-storage
+              mountPath: /data/db #default mongo folder
+      volumes:
+        - name: mongo-persistent-storage # points to above
+          hostPath:
+            # Path on our host system
+            # Remember that we are using a VM, so use
+            # /mnt/some-directory
+            # if the dir doesn't exist, it will get created
+            # with 0755
+            path: /mnt/mongdb/data
+            # If the dir doesn't exist, create it
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  # Critical - again this is going to be the dns entry
+  # The microservice is using default.svc.cluster.local
+  # So call it fleetman-mongodb
+  name: fleetman-mongodb
+spec:
+  selector:
+    # Linked to deployment.spec.selector.matchLabels
+    app: mongodb
+  ports:
+    - name: mongoport
+      # Default mongodb port
+      port: 27017
+  # This doesn't need to be accessed externally, so
+  # no need for nodePort, use ClusterIP
+  type: ClusterIP

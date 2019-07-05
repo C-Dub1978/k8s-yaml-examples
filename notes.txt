@@ -117,6 +117,10 @@ Only use rollbacks in complete emergencies because you'll get desired vs. curren
 
 /////////////////////////////////////////////
 
+Persistance:
+
+Now that we have deployed all of our microservices, there is a serious problem. All of the history of our vehicles is being stored in memory of the position tracker pod. The problem is that eventually, the pod will run out of memory and k8s will destroy it and restart it. To solve this problem, were going to need to store this data in an actual data store, like a database somewhere.
+
 
 
 
