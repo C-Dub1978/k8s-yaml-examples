@@ -135,8 +135,78 @@ in the deployment.spec.template.spec.containers, add a 'volumeMounts' property -
   with a -name: mongo-persistent-storage
           mountPath: /data/db #default mongod data folder
 
-For the actual mount path on our localmachine, there are many complicated options. Refer to the k8s documentation and refer to our yaml file to see how we mount to a directory inside our VM for the mongo data store
+For the actual mount path on our localmachine, there are many complicated options. Refer to the k8s documentation and refer to our yaml file to see how we mount to a directory inside our VM for the mongo data store.
 
+example:
+
+deployment.spec.template.spec:
+  
+  volumes:
+    - name: some-name
+      hostPath:
+        path: /some/mount/
+        type: DirectoryOrCreate
+
+The path above must match the path you set in volumeMounts under the containers level. Using directoryOrCreate will create the directory you specify on the local host/VM if not exists.
+
+The problem with the above method is that if you have that hostPath in many different files, it's hardcoded and if you needed to change the path you have to do it in a bunch of places. A better method is to use a 'pointer' which is a pointer to the configuration of HOW we want the mount to be implemented - that way if you update the configuration pointer, all yaml files that use it will be updated. For this we use a persistentVolumeClaim
+
+so under deployment.spec.tempate.spec.volumes:
+
+undrneath the name field, add:
+
+persistentVolumeClaim:
+  claimName: file-name-for-claim
+
+Then you would create a new object or yaml file, which the above points to (a file can be named anything):
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: file-name-for-claim #must match the claimName above
+spec:
+  # Allocate disk space
+  accessMode:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi #20 gigabytes of storage
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: any-name
+spec:
+  accessMode:
+    - ReadWriteOnce
+  capacity:
+    storage: 20Gi
+  # Use any type of storage, in our case hostPath
+  hostPath:
+    path: "/some/mount/path"
+    type: DirectoryOrCreate
+
+Notice how our new file is broken up into 2 objects? The first object tells k8s WHAT we want for volume claim, the second object tells k8s HOW we want to implement it (i.e. EBS, hostPath, etc.)
+
+The above is slightly complicated but just reference the documentation and remember that we have 2 seperate needs in our new file - what we need and how we want to implement.
+
+So now that we have both a persistentVolumeClaim, and a persistentVolume, we need to actually link them together to make it work. For this, we need a storageClass. The easiest way to do this is to add a storageClassName to each object.
+
+So in our PersistentVolumeClaim.spec:
+
+storageClassName: someStorageClassName
+
+Also in our PersistentVolume.spec:
+
+storageClassName: someStorageClassName
+
+Make sure the name of the class is the same in both object.
+
+A storage class itself allows admins to set up different storage classes, such as provisioning SSD drives, hard drives, etc. So you could create a configuration for both the SSD and hard drive, and this configuration would label it and define which type it is. This is more important for the cloud but well use it for our hostpath.
+
+We won't create a storage class object, but we will reference a storageClass name in both our PVC and PV, that way they link together. Later on we'll actually create different types of storageClasses for different storage types (ssd, EBS, etc)..... Then we will create new PV's and PVC's that will link together using different storage classes....
 
 
 

@@ -20,15 +20,8 @@ spec:
               mountPath: /data/db #default mongo folder
       volumes:
         - name: mongo-persistent-storage # points to above
-          hostPath:
-            # Path on our host system
-            # Remember that we are using a VM, so use
-            # /mnt/some-directory
-            # if the dir doesn't exist, it will get created
-            # with 0755
-            path: /mnt/mongdb/data
-            # If the dir doesn't exist, create it
-            type: DirectoryOrCreate
+          persistentVolumeClaim:
+            claimName: mongo-pvc
 ---
 apiVersion: v1
 kind: Service
