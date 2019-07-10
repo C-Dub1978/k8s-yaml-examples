@@ -209,6 +209,147 @@ A storage class itself allows admins to set up different storage classes, such a
 We won't create a storage class object, but we will reference a storageClass name in both our PVC and PV, that way they link together. Later on we'll actually create different types of storageClasses for different storage types (ssd, EBS, etc)..... Then we will create new PV's and PVC's that will link together using different storage classes....
 
 
+//////////////////////////////////
+
+AWS Init:
+
+First step is to get kubernetes installed. For this, instead of creating all the instances, and dealing with the insanity that is creating a cluster, the easiest way to do this is to use Kops - Kubernetes operations. It will get us set with a cluster in no time flat.
+
+github.com/kubernetes/kops
+
+This is a legitimate production grade cluster, so use it if you need to, or you can use EKS. For the course we'll bootstrap our cluster with kops.
+
+First install kops, then make sure the aws cli is installed. Make sure to do this on a free tiered EC2 instance (t2.micro). Spin up the instance, download the private key, and ssh into the instance with:
+
+ssh -i /path/to/key.pem ec2-user@instanceIP
+
+Walk through the kops github installation guide - you will create IAM group and add user to it, create a key/value pair.... NEVER share these keys with anyone, this is important. When we are done with this, delete the entire cluster and delete the IAM user and group.
+
+In order to store cluster state, next we need to create an S3 bucket with a globally (globally as in across all aws) unique name. Create the bucket and set tssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa
+he options on it as seen in the kops docs.
+
+Finally, create the cluster, giving the availability zones into the command as seen at 
+aws ec2 list-availability-zones --region=REGION
+
+create the cluster with the kops create cluster command, giving it all availability zones (use us-east-1 for this)....
+
+You will get an error about ssh. create an ssh key with:
+ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa
+
+Then run the command that it gave you when it showed the ssh error, pointing to the new id_rsa.pub in your .ssh dir.
+
+Finish following the directions to spin up the cluster, then we want to update the nodes
+
+kops edit ig nodes
+
+Set the min nodes to 3, and max nodes to 5. Save. This will give us enough nodes to power our microservices and app.
+
+Finally, apply the configuration:
+kops update cluster ${NAME} --yes
+
+This will build the cluster, then when we do
+kops validate cluster
+
+It should show the master and worker nodes. We now have a full blown k8s cluster manually!!!!!
+
+Keep in mind we have auto-scaling groups, a load balancer, and a bunch of ec2 instances, so make sure all this shit is torn down after we finish, or you will get charged.
+
+TO DELETE CLUSTER:
+kops delete cluster --name ${NAME}
+
+Then make sure to clean up any aftereffects
+
+===============================
+
+Creating storage classes for the aws cluster:
+
+Once we copy all our k8s yaml files, we need to create a storage class in our storage.yml this way we don't have to manually go into the aws gui and go through the steps - the storage class will dynamically allocate/create a new EBS block store!
+
+Make sure you look up EBS documentation to get pricing on the type... for our case, use gp2 (general purpose SSD, not super expensive)
+
+Our storageClass will look like:
+
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: arbitrary-name
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2 #general purpose ssd EBS
+  zones: us-east-1a, us-east-1b
+  fsType: ext4
+  
+The above storageClass will completely eliminate our old PersistentVolume.
+
+Make sure to change the volume claim spec.storageClassName to be the same as the metadata.name for the new storageClass
+
+Apply the storage file, do a kubectl get pv - it should show as 'Bound' under its status.
+
+Keep in mind - the 'reclaimPolicy' is delete by default - meaning that when the ebs is deleted, all the data on it is deleted. If for some reason you needed to keep the data its going to cost you and you would need to set the reclaimPolicy
+
+
+Next review the mongo-stack and make sure that the volumeMount in the mongodb is pointing to the correct default mongodb directory. Then make sure it's spec.template.spec.volumes.persistentVolumeClaim points to the correctl PVC claim name
+
+apply it, and if any weirdness arises check it's pod logs (it would have something to do with volume mounting)
+
+for the workloads service: we need to change ports - remember that nodePorts shouldn't be used in production, so lets switch up.
+
+SERVICES:
+
+for the angular-app:
+
+delete the nodePort line, and modify type:
+type: LoadBalancer
+
+for the queue:
+(we dont need admin console)
+remove nodePort: 30010
+
+convert type: ClusterIP (so queue is only visible to cluster)
+
+for the api-gateway:
+remove nodePort: 30020
+convert type: ClusterIP
+
+Now that the front-end type has been switched to loadBalancer, we can go into our console and check the new load balancer dns name!
+
+copy it, and in a browser, paste (should be running on port 80 because of our service)
+
+NICE WORK!!!!!!!!!!!!!!
+
+when you are ready, go to your domain name provider and set up a new A record to point to your load balancer DNS name
+
+===============================
+
+Surviving a k8s node failure:
+
+Requirements: in the event of a node, or availability zone failure, our app needs to still be available on the website.
+
+if we do a kubectl get po -o wide
+
+it will show where each of your pods is running (which nodes)
+
+We already do have an auto-scaling group, so when we go into our EC2 instances and terminate the node hosting the angular webapp pod, k8s will automatically re-spin up a new pod and put it on an available node..... This is ok but for a minute or so our app just spun when we refreshed.
+
+The way we can address this issue is to make sure that in all of our deployments have replicas that are more than 1 instance. If a node goes down, k8s will instantly create a new pod on an available node while it reprovisions a new node to replace the broken one. Super easy.
+
+Since we ensure when we used kops to use multiple availability zones for our worker nodes, it's already configured that our nodes need to be spread out for us.
+
+If, however, your deployment is STATEFUL, you are gonna need to research how to replicate the app/microservice. Deployment replicas only work dependably with STATELESS apps/microservices. 
+
+=========================
+
+DELETING THE CLUSTER IN KOPS:
+
+kops delete cluster --name ${NAME} --yes
+
+(MAKE SURE YOU LET IT COMPLETELY FINISH)
+
+Then go into your 2 different regions and clean up anything that may be leftover.
+
+================================
+
+
 
 
 
